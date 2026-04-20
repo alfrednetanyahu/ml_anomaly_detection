@@ -1,0 +1,23 @@
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate*
+terraform/terraform.tfvars
+
+# ML data and outputs
+ml/data/
+ml/output/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Secrets
+infra/.env
+*.pem
+
+# OS
+.DS_Store

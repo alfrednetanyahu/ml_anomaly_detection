@@ -1,0 +1,76 @@
+{
+  "title": "Thesis – Anomaly Detection Overview",
+  "uid": "thesis-anomaly-v1",
+  "tags": ["thesis", "anomaly"],
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "CPU Usage (Node Exporter)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "1 - avg(rate(node_cpu_seconds_total{mode='idle'}[5m]))",
+          "legendFormat": "CPU Busy"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "App HTTP Request Rate",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(app_http_requests_total[5m])",
+          "legendFormat": "{{status}} {{endpoint}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "p95 Response Latency",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(app_http_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "p95 latency"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "HTTP Error Rate",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(app_http_requests_total{status=~'5..'}[5m]) / (rate(app_http_requests_total[5m]) + 0.001)",
+          "legendFormat": "Error ratio"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "logs",
+      "title": "Application Logs (Loki)",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
+      "options": { "showTime": true, "sortOrder": "Descending" },
+      "targets": [
+        {
+          "datasource": "Loki",
+          "expr": "{service=\"sample-app\"}"
+        }
+      ]
+    }
+  ]
+}

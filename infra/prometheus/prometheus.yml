@@ -1,0 +1,46 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: "thesis"
+
+# Rule files
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+# Alertmanager configuration (optional – configure if you deploy Alertmanager)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ["alertmanager:9093"]
+
+scrape_configs:
+
+  # ── Prometheus self-scrape ───────────────────────────────────────────────
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ── Node exporter (system metrics) ──────────────────────────────────────
+  # Running directly on the EC2 host (not inside Docker).
+  # The host is accessible from the monitoring bridge network via host.docker.internal
+  # or the Docker bridge gateway IP (typically 172.17.0.1).
+  # Update the target if your setup differs.
+  - job_name: node_exporter
+    static_configs:
+      - targets: ["host.docker.internal:9100"]
+        labels:
+          instance: "ec2-host"
+
+  # ── Sample application ───────────────────────────────────────────────────
+  - job_name: sample_app
+    static_configs:
+      - targets: ["sample-app:8000"]
+        labels:
+          instance: "sample-app"
+    metrics_path: /metrics
+
+  # ── OpenTelemetry Collector self-metrics ─────────────────────────────────
+  - job_name: otel_collector
+    static_configs:
+      - targets: ["otel-collector:8888"]

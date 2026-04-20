@@ -1,0 +1,4 @@
+flask==3.0.3
+prometheus-client==0.20.0
+structlog==24.1.0
+gunicorn==22.0.0

@@ -1,0 +1,95 @@
+groups:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Rule-based alerts – baseline for comparison with ML model in thesis
+  # THESIS NOTE: These rules represent the "traditional" approach. The ML
+  # pipeline should be evaluated against these labels for precision/recall.
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - name: system_alerts
+    interval: 30s
+    rules:
+
+      - alert: HighCPUUsage
+        # CPU idle < 20% → CPU busy > 80%
+        expr: |
+          (1 - avg by(instance) (
+            rate(node_cpu_seconds_total{mode="idle"}[5m])
+          )) > 0.80
+        for: 2m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanizePercentage }} (threshold: 80%) for 2+ minutes."
+
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+        for: 2m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanizePercentage }}."
+
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} /
+           node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs"}) < 0.15
+        for: 5m
+        labels:
+          severity: critical
+          category: system
+        annotations:
+          summary: "Disk space low on {{ $labels.instance }}:{{ $labels.mountpoint }}"
+          description: "Only {{ $value | humanizePercentage }} free."
+
+  - name: app_alerts
+    interval: 30s
+    rules:
+
+      - alert: HighErrorRate
+        # More than 5% of requests return 5xx
+        expr: |
+          (
+            rate(app_http_requests_total{status=~"5.."}[5m])
+          ) / (
+            rate(app_http_requests_total[5m]) + 0.001
+          ) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+          category: app
+        annotations:
+          summary: "High HTTP error rate on sample-app"
+          description: "Error rate is {{ $value | humanizePercentage }}."
+
+      - alert: SlowResponseTime
+        # 95th percentile latency > 2 seconds
+        expr: |
+          histogram_quantile(0.95,
+            rate(app_http_request_duration_seconds_bucket[5m])
+          ) > 2.0
+        for: 1m
+        labels:
+          severity: warning
+          category: app
+        annotations:
+          summary: "Slow p95 response time on sample-app"
+          description: "p95 latency is {{ $value }}s."
+
+      - alert: AppDown
+        expr: up{job="sample_app"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          category: app
+        annotations:
+          summary: "Sample app is down"
+          description: "Prometheus cannot scrape the sample app."
+
+      # THESIS NOTE: Add more domain-specific rules here.
+      # Examples: request rate drops (traffic dip anomaly),
+      # queue depth thresholds, custom business metrics.

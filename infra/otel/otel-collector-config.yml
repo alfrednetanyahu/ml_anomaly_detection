@@ -1,0 +1,56 @@
+# OpenTelemetry Collector – receives OTLP, forwards to Prometheus & Loki
+# THESIS NOTE: Extend this to receive traces from the sample app (Jaeger/Tempo).
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # Prometheus receiver – scrape the sample app directly via OTEL
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: otel_scrape_sample_app
+          scrape_interval: 15s
+          static_configs:
+            - targets: ["sample-app:8000"]
+
+processors:
+  batch:
+    timeout: 10s
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 256
+
+exporters:
+  # Forward metrics to Prometheus via remote_write
+  prometheusremotewrite:
+    endpoint: http://prometheus:9090/api/v1/write
+    tls:
+      insecure: true
+
+  # Forward logs to Loki
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+
+  # Debug exporter – helpful during development
+  debug:
+    verbosity: normal
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [memory_limiter, batch]
+      exporters: [prometheusremotewrite]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [loki]
+
+  telemetry:
+    metrics:
+      address: 0.0.0.0:8888
