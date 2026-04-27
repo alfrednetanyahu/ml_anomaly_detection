@@ -50,3 +50,10 @@ scrape_configs:
       - labels:
           host:
           process:
+#  get app logs into Loki, assuming the app is running in a Docker container and using the default json-file log driver
+  - job_name: sample-app
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: sample-app
+          __path__: /var/lib/docker/containers/<container-id>/*-json.log

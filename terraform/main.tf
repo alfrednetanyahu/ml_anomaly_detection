@@ -10,6 +10,7 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+  profile = "thesis-profile"
 }
 
 # ─────────────────────────────────────────────
@@ -195,8 +196,14 @@ resource "aws_instance" "monitoring" {
   }
 
   user_data = templatefile("${path.module}/user_data.sh.tpl", {
-    github_repo_url = var.github_repo_url
+    github_repo_url    = var.github_repo_url
+    deploy_key_private = var.deploy_key_private
   })
 
   tags = { Name = "${var.project_name}-node" }
+}
+
+resource "aws_key_pair" "secsla_eu" {
+  key_name   = var.key_pair_name
+  public_key = file(var.public_key_path)
 }

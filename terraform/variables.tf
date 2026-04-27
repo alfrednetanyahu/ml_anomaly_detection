@@ -13,6 +13,13 @@ variable "instance_type" {
 variable "key_pair_name" {
   description = "Name of an existing AWS key pair for SSH access"
   type        = string
+  default     = "secscla-key"
+}
+
+variable "public_key_path" {
+  description = "Path to the local SSH public key file to import into AWS"
+  type        = string
+  default     = "~/.ssh/secsla-key.pub"
 }
 
 variable "project_name" {
@@ -24,7 +31,10 @@ variable "project_name" {
 variable "github_repo_url" {
   description = "GitHub URL of this repository (for cloning in user data)"
   type        = string
-  default     = "https://github.com/YOUR_USERNAME/YOUR_REPO.git"
+variable "deploy_key_private" {
+  description = "Private SSH deploy key for cloning the GitHub repository"
+  type        = string
+  sensitive   = true
 }
 
 variable "allowed_cidr" {

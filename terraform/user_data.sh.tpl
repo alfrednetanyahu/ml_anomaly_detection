@@ -50,9 +50,28 @@ EOF
 systemctl daemon-reload
 systemctl enable --now node_exporter
 
+# ── Deploy key for GitHub SSH access ─────────────────────────────────────
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
+
+cat > /root/.ssh/id_ml_deploy <<'SSHKEY'
+${deploy_key_private}
+SSHKEY
+chmod 600 /root/.ssh/id_ml_deploy
+
+cat >> /root/.ssh/config <<'SSHCONF'
+Host github-ml
+  HostName github.com
+  User git
+  IdentityFile /root/.ssh/id_ml_deploy
+  IdentitiesOnly yes
+  StrictHostKeyChecking no
+SSHCONF
+chmod 600 /root/.ssh/config
+
 # ── Clone repository ──────────────────────────────────────────────────────
 REPO_DIR="/opt/thesis"
-git clone ${github_repo_url} "$REPO_DIR" || true
+git clone $(echo "${github_repo_url}" | sed 's|git@github\.com:|git@github-ml:|') "$REPO_DIR" || true
 chown -R ubuntu:ubuntu "$REPO_DIR"
 
 # ── Start monitoring stack ────────────────────────────────────────────────
