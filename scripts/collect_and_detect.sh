@@ -20,8 +20,14 @@
 #   LOKI_QUERY         LogQL query  (default: {service="sample-app"})
 #   WINDOW_HOURS       Hours of telemetry to collect per run  (default: 2)
 #   TRAIN_RATIO        Fraction of window used as training    (default: 0.7)
-#   TRAIN_END_ISO      Fixed ISO8601 train-end override; skips TRAIN_RATIO calc
-#                      Useful when you have a known-good baseline timestamp.
+#   TRAIN_END_ISO      Anomaly injection start time (ISO8601).  Data before this
+#                      timestamp is treated as "normal" training data.
+#                      REQUIRED for experiments — set to the exact moment you ran
+#                      `load_generator.py --mode errors/slow/burst`.
+#                      When unset, auto-computed as start + TRAIN_RATIO * WINDOW.
+#   INCIDENTS_FILE     Path to incidents.json written by load_generator.py
+#                      --record-incident (default: ml/data_ingest/incidents.json).
+#                      Evaluation step is skipped when this file is absent.
 
 set -euo pipefail
 
@@ -52,6 +58,7 @@ LOKI_QUERY="${LOKI_QUERY:-}"
 WINDOW_HOURS="${WINDOW_HOURS:-2}"
 TRAIN_RATIO="${TRAIN_RATIO:-0.7}"
 TRAIN_END_ISO="${TRAIN_END_ISO:-}"
+INCIDENTS_FILE="${INCIDENTS_FILE:-$ML_DIR/data_ingest/incidents.json}"
 
 # ── Timestamps & time window ──────────────────────────────────────────────────
 RUN_TS="$(date -u +'%Y%m%dT%H%M%SZ')"
@@ -60,9 +67,11 @@ END_ISO="$(date -u -d "@${END_EPOCH}"   +'%Y-%m-%dT%H:%M:%SZ')"
 START_EPOCH="$(( END_EPOCH - WINDOW_HOURS * 3600 ))"
 START_ISO="$(date -u -d "@${START_EPOCH}" +'%Y-%m-%dT%H:%M:%SZ')"
 
+_TRAIN_END_AUTO=0
 if [[ -z "$TRAIN_END_ISO" ]]; then
     TRAIN_EPOCH="$(awk "BEGIN { printf \"%.0f\", ${START_EPOCH} + ${WINDOW_HOURS} * 3600 * ${TRAIN_RATIO} }")"
     TRAIN_END_ISO="$(date -u -d "@${TRAIN_EPOCH}" +'%Y-%m-%dT%H:%M:%SZ')"
+    _TRAIN_END_AUTO=1
 fi
 
 # ── Output layout ─────────────────────────────────────────────────────────────
@@ -89,7 +98,8 @@ log() { echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] $*"; }
 
 log "=== collect_and_detect  run=${RUN_TS} ==="
 log "  Window    : ${START_ISO}  →  ${END_ISO}  (${WINDOW_HOURS}h)"
-log "  Train-end : ${TRAIN_END_ISO}"
+log "  Train-end : ${TRAIN_END_ISO}$([[ "$_TRAIN_END_AUTO" -eq 1 ]] && echo " (auto — set TRAIN_END_ISO to anomaly injection time for experiments)")"
+log "  Incidents : ${INCIDENTS_FILE}"
 log "  Prometheus: ${PROMETHEUS_HOST}"
 log "  Loki      : ${LOKI_HOST}"
 log "  Run dir   : ${RUN_DIR}"
@@ -195,6 +205,9 @@ fi
 log "--- [8] Evaluating vs rule-based alerts ---"
 if [[ "$METRICS_OK" -eq 0 ]]; then
     log "  (skipped — no metrics anomaly output)"
+elif [[ ! -f "$INCIDENTS_FILE" ]]; then
+    log "  (skipped — no incidents file at $INCIDENTS_FILE)"
+    log "  Run experiments first: python app/load_generator.py --mode errors --record-incident"
 else
     EVAL_LOGS_ARG=""
     if [[ "$LOGS_OK" -eq 1 ]]; then
@@ -202,7 +215,7 @@ else
     fi
     # shellcheck disable=SC2086
     python3 evaluation/evaluate_vs_rules.py \
-        --incidents         data_ingest/incidents.json \
+        --incidents         "$INCIDENTS_FILE" \
         --metrics-anomalies "$METRICS_ANOMALIES" \
         --rule-alerts       "$RULE_ALERTS_FILE" \
         $EVAL_LOGS_ARG \
