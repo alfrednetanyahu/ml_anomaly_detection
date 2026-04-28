@@ -52,6 +52,8 @@ services:
       - "--storage.tsdb.retention.time=30d"
       - "--web.enable-lifecycle"
       - "--web.enable-admin-api"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - monitoring
     restart: unless-stopped

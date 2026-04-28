@@ -24,8 +24,8 @@ THESIS NOTE: This is the baseline ML model. Extend by:
 """
 
 import argparse
-import json
-from datetime import datetime, timezone
+import sys
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib
@@ -201,6 +201,10 @@ def main():
         df.index = pd.to_datetime(df.index, utc=True)
 
     print(f"Loaded {len(df)} rows, columns: {list(df.columns)}")
+
+    if len(df) == 0:
+        print("No metrics data fetched — skipping anomaly detection.")
+        sys.exit(1)
 
     train_end = datetime.fromisoformat(args.train_end.replace("Z", "+00:00"))
     result = train_and_score(

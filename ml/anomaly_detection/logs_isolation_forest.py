@@ -116,9 +116,10 @@ def train_and_score(
     n_estimators: int,
     random_state: int,
 ) -> pd.DataFrame:
-    import pandas as pd
-
-    train_end = pd.Timestamp(train_end, tz="UTC") if not isinstance(train_end, pd.Timestamp) else train_end
+    if not isinstance(train_end, pd.Timestamp):
+        train_end = pd.Timestamp(train_end)
+    if train_end.tzinfo is None:
+        train_end = train_end.tz_localize("UTC")
     mask_train = agg.index < train_end
 
     X_train = agg[mask_train].values

@@ -31,6 +31,8 @@ variable "project_name" {
 variable "github_repo_url" {
   description = "GitHub URL of this repository (for cloning in user data)"
   type        = string
+}
+
 variable "deploy_key_private" {
   description = "Private SSH deploy key for cloning the GitHub repository"
   type        = string

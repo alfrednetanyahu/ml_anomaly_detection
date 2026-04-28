@@ -158,7 +158,8 @@ def main():
     parser = argparse.ArgumentParser(description="Evaluate rule-based vs ML anomaly detection")
     parser.add_argument("--incidents", default="../../data_ingest/incidents.json")
     parser.add_argument("--metrics-anomalies", default="../output/metrics_anomalies.csv")
-    parser.add_argument("--logs-anomalies", default="../output/logs_anomalies.csv")
+    parser.add_argument("--logs-anomalies", default=None,
+                        help="CSV output of logs_isolation_forest.py (optional)")
     parser.add_argument("--rule-alerts", default="../output/rule_alerts.csv",
                         help="CSV with starts_at/ends_at columns from Alertmanager")
     parser.add_argument("--resolution", type=int, default=60,
@@ -175,32 +176,40 @@ def main():
 
     print("Loading detector outputs ...")
     metrics_series = load_anomaly_series(args.metrics_anomalies)
-    logs_series = load_anomaly_series(args.logs_anomalies)
+    have_logs = args.logs_anomalies is not None and Path(args.logs_anomalies).exists()
+    logs_series = load_anomaly_series(args.logs_anomalies) if have_logs else None
+    if not have_logs:
+        print("  [INFO] No logs anomaly file — log-based detectors skipped.")
     rules_series = load_rule_alerts(args.rule_alerts, args.resolution)
 
     # ── Align all series to common index ─────────────────────────────────────
-    all_idx = metrics_series.index.union(logs_series.index)
+    all_idx = metrics_series.index
+    if have_logs:
+        all_idx = all_idx.union(logs_series.index)
     if len(rules_series):
         all_idx = all_idx.union(rules_series.index)
 
     gt = build_ground_truth_series(incidents, all_idx)
     metrics_aligned = metrics_series.reindex(all_idx, fill_value=0)
-    logs_aligned = logs_series.reindex(all_idx, fill_value=0)
+    logs_aligned = logs_series.reindex(all_idx, fill_value=0) if have_logs else None
     rules_aligned = rules_series.reindex(all_idx, fill_value=0) if len(rules_series) else pd.Series(0, index=all_idx, name="rule_based")
 
-    combined_or = combine_detectors(metrics_aligned, logs_aligned, mode="OR")
-    combined_and = combine_detectors(metrics_aligned, logs_aligned, mode="AND")
+    combined_or  = combine_detectors(metrics_aligned, logs_aligned, mode="OR")  if have_logs else None
+    combined_and = combine_detectors(metrics_aligned, logs_aligned, mode="AND") if have_logs else None
 
     # ── Classification metrics ────────────────────────────────────────────────
     print("\n=== Classification Performance ===")
     reports = []
-    for name, series in [
+    candidates = [
         ("metrics_isolation_forest", metrics_aligned),
-        ("logs_isolation_forest", logs_aligned),
-        ("rule_based", rules_aligned),
-        ("combined_OR", combined_or),
-        ("combined_AND", combined_and),
-    ]:
+        ("logs_isolation_forest",    logs_aligned),
+        ("rule_based",               rules_aligned),
+        ("combined_OR",              combined_or),
+        ("combined_AND",             combined_and),
+    ]
+    for name, series in candidates:
+        if series is None:
+            continue
         r = classification_report(gt, series, name)
         reports.append(r)
         print(f"\n[{name}]")
@@ -214,10 +223,12 @@ def main():
     ttd_results = []
     for name, series in [
         ("metrics_isolation_forest", metrics_aligned),
-        ("logs_isolation_forest", logs_aligned),
-        ("rule_based", rules_aligned),
-        ("combined_OR", combined_or),
+        ("logs_isolation_forest",    logs_aligned),
+        ("rule_based",               rules_aligned),
+        ("combined_OR",              combined_or),
     ]:
+        if series is None:
+            continue
         ttd = time_to_detection(incidents, series, name)
         ttd_results.extend(ttd)
         detected = [t for t in ttd if t["detected"]]

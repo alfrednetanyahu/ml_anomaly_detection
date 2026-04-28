@@ -72,10 +72,10 @@ docker-compose up -d
 
 | Service | URL |
 |---------|-----|
-| Sample App | `http://<IP>:8000` |
-| Prometheus | `http://<IP>:9090` |
-| Grafana | `http://<IP>:3000` (admin/changeme) |
-| Loki | `http://<IP>:3100` |
+| Sample App | `http://$TH_IP:8000` |
+| Prometheus | `http://$TH_IP:9090` |
+| Grafana | `http://$TH_IP:3000` (admin/changeme) |
+| Loki | `http://$TH_IP:3100` |
 
 ### 5. Generate Load & Anomalies
 
@@ -85,13 +85,13 @@ cd app
 pip install requests
 
 # Normal load (5 min)
-python load_generator.py --host http://<IP>:8000 --mode normal --duration 300
+python load_generator.py --host http://$TH_IP:8000 --mode normal --duration 300
 
 # Anomaly: high error rate (2 min, recorded as incident)
-python load_generator.py --host http://<IP>:8000 --mode errors --duration 120 --record-incident
+python load_generator.py --host http://$TH_IP:8000 --mode errors --duration 120 --record-incident
 
 # Anomaly: high latency (2 min, recorded as incident)
-python load_generator.py --host http://<IP>:8000 --mode slow --duration 120 --record-incident
+python load_generator.py --host http://$TH_IP:8000 --mode slow --duration 120 --record-incident
 ```
 
 ### 6. Export Telemetry Data
@@ -103,14 +103,14 @@ mkdir -p data
 
 # Export metrics (adjust time window to your experiment)
 python data_ingest/fetch_prometheus.py \
-  --host http://<IP>:9090 \
+  --host http://$TH_IP:9090 \
   --start 2024-06-01T00:00:00Z \
   --end   2024-06-01T12:00:00Z \
   --out   data/metrics.parquet
 
 # Export logs
 python data_ingest/fetch_loki.py \
-  --host http://<IP>:3100 \
+  --host http://$TH_IP:3100 \
   --query '{service="sample-app"}' \
   --start 2024-06-01T00:00:00Z \
   --end   2024-06-01T12:00:00Z \
