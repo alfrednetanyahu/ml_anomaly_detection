@@ -26,6 +26,7 @@ THESIS NOTE: Log anomaly detection is an open research area. Extend this by:
 
 import argparse
 import re
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -121,6 +122,17 @@ def train_and_score(
     if train_end.tzinfo is None:
         train_end = train_end.tz_localize("UTC")
     mask_train = agg.index < train_end
+    if mask_train.sum() == 0:
+        n_train = max(1, int(len(agg) * 0.7))
+        mask_train = pd.Series(False, index=agg.index)
+        mask_train.iloc[:n_train] = True
+        print(
+            f"WARNING: train_end={train_end} is before all data "
+            f"({agg.index[0]} → {agg.index[-1]}). "
+            f"Falling back to first {n_train}/{len(agg)} rows as training. "
+            "Set TRAIN_END_ISO to a timestamp within the data range for experiments.",
+            file=sys.stderr,
+        )
 
     X_train = agg[mask_train].values
     X_all = agg.values

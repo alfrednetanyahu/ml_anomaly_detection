@@ -97,6 +97,20 @@ def train_and_score(
     features = engineer_features(df)
 
     mask_train = features.index < train_end
+    if mask_train.sum() == 0:
+        # train_end precedes all data (e.g. sparse data window not yet filled).
+        # Fall back to first 70 % of available rows so the script can still run.
+        n_train = max(1, int(len(features) * 0.7))
+        mask_train = pd.Series(False, index=features.index)
+        mask_train.iloc[:n_train] = True
+        print(
+            f"WARNING: train_end={train_end} is before all data "
+            f"({features.index[0]} → {features.index[-1]}). "
+            f"Falling back to first {n_train}/{len(features)} rows as training. "
+            "Set TRAIN_END_ISO to a timestamp within the data range for experiments.",
+            file=sys.stderr,
+        )
+
     X_train = features[mask_train].values
     X_all = features.values
 

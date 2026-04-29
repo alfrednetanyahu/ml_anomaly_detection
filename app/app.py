@@ -138,6 +138,25 @@ def error():
     return jsonify({"message": "no error this time"}), 200
 
 
+@app.route("/log-burst")
+def log_burst():
+    """
+    Scenario 3: emit N error-level log entries without returning HTTP 5xx.
+    Lets the load generator create a log-only anomaly (no Prometheus metric spike).
+    count=N (default 10, max 100).
+    """
+    count = min(int(request.args.get("count", 10)), 100)
+    for i in range(count):
+        log.error(
+            "db_connection_timeout",
+            message=f"DB connection timeout - retry {i + 1} failed",
+            error_type="timeout",
+            detail="exception in handler: connection pool exhausted",
+        )
+    record_metrics("/log-burst", 200, 0.0)
+    return jsonify({"logged": count}), 200
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "healthy"}), 200

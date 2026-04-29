@@ -1,0 +1,15 @@
+global:
+  resolve_timeout: 5m
+
+# All alerts route to the 'null' receiver — no email/Slack needed for the
+# thesis. Alerts are still stored in the Alertmanager API so the evaluation
+# script can query them via GET /api/v2/alerts.
+route:
+  receiver: 'null'
+  group_by: ['alertname', 'severity']
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+
+receivers:
+  - name: 'null'
