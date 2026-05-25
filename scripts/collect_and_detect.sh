@@ -59,6 +59,11 @@ WINDOW_HOURS="${WINDOW_HOURS:-2}"
 TRAIN_RATIO="${TRAIN_RATIO:-0.7}"
 TRAIN_END_ISO="${TRAIN_END_ISO:-}"
 INCIDENTS_FILE="${INCIDENTS_FILE:-$ML_DIR/data_ingest/incidents.json}"
+# IsolationForest contamination: fraction of training data expected to be anomalous.
+# Default 0.02 suits production (rare anomalies). Set to 0.15 via run_experiment.sh
+# during thesis experiments where the anomaly window is a significant fraction of
+# the total window.
+CONTAMINATION="${CONTAMINATION:-0.02}"
 
 # ── Timestamps & time window ──────────────────────────────────────────────────
 RUN_TS="$(date -u +'%Y%m%dT%H%M%SZ')"
@@ -151,9 +156,10 @@ fi
 log "--- [7a] Metrics IsolationForest ---"
 METRICS_OK=1
 python3 anomaly_detection/metrics_isolation_forest.py \
-    --data      "$METRICS_FILE" \
-    --train-end "$TRAIN_END_ISO" \
-    --out       "$METRICS_ANOMALIES" || METRICS_OK=0
+    --data          "$METRICS_FILE" \
+    --train-end     "$TRAIN_END_ISO" \
+    --contamination "$CONTAMINATION" \
+    --out           "$METRICS_ANOMALIES" || METRICS_OK=0
 if [[ "$METRICS_OK" -eq 0 ]]; then
     log "WARNING: Metrics anomaly detection failed — check data above."
 fi
@@ -161,9 +167,10 @@ fi
 log "--- [7b] Logs IsolationForest ---"
 if [[ "$LOGS_OK" -eq 1 ]]; then
     python3 anomaly_detection/logs_isolation_forest.py \
-        --data      "$LOGS_FILE" \
-        --train-end "$TRAIN_END_ISO" \
-        --out       "$LOGS_ANOMALIES"
+        --data          "$LOGS_FILE" \
+        --train-end     "$TRAIN_END_ISO" \
+        --contamination "$CONTAMINATION" \
+        --out           "$LOGS_ANOMALIES"
 else
     log "  (skipped — no log data)"
 fi

@@ -107,6 +107,15 @@ resource "aws_security_group" "monitoring" {
     description = "Prometheus"
   }
 
+  # Alertmanager
+  ingress {
+    from_port   = 9093
+    to_port     = 9093
+    protocol    = "tcp"
+    cidr_blocks = [var.allowed_cidr]
+    description = "Alertmanager"
+  }
+
   # Grafana
   ingress {
     from_port   = 3000

@@ -9,10 +9,6 @@ Usage:
     --end   2024-06-02T00:00:00Z \
     --step  60 \
     --out   ../data/metrics.parquet
-
-THESIS NOTE: Extend the QUERIES dict with any additional metrics
-relevant to your experiment scenarios (e.g., JVM heap, queue depth,
-custom app counters).
 """
 
 import argparse
@@ -30,8 +26,8 @@ QUERIES: dict[str, str] = {
     "mem_used_ratio": "1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
     "disk_io_read_bps": "rate(node_disk_read_bytes_total[5m])",
     "disk_io_write_bps": "rate(node_disk_written_bytes_total[5m])",
-    "net_rx_bps": "rate(node_network_receive_bytes_total{device='eth0'}[5m])",
-    "net_tx_bps": "rate(node_network_transmit_bytes_total{device='eth0'}[5m])",
+    "net_rx_bps": "rate(node_network_receive_bytes_total{device='ens5'}[5m])",
+    "net_tx_bps": "rate(node_network_transmit_bytes_total{device='ens5'}[5m])",
     # App
     "request_rate": "sum(rate(app_http_requests_total[5m]))",
     "error_rate": "sum(rate(app_http_requests_total{status=~'5..'}[5m]))",
@@ -48,7 +44,6 @@ QUERIES: dict[str, str] = {
     "p99_latency": (
         "histogram_quantile(0.99, sum by(le)(rate(app_http_request_duration_seconds_bucket[5m])))"
     ),
-    # THESIS NOTE: Add more queries here
 }
 
 

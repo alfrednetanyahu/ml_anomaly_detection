@@ -58,10 +58,13 @@ def fetch_loki_range(
                 parsed = {"message": line}
 
             records.append({
-                "timestamp": ts,
                 "raw": line,
                 **labels,
                 **parsed,
+                # Loki's nanosecond timestamp is authoritative; overwrite any
+                # "timestamp" field inside the parsed JSON log line (which would
+                # be a string and cause sort_values to fail on mixed types).
+                "timestamp": ts,
             })
 
     return records

@@ -25,7 +25,6 @@
 #   WINDOW_HOURS       Telemetry window passed to collect_and_detect.sh (default: 1)
 #   PROMETHEUS_HOST    Override Prometheus URL
 #   LOKI_HOST          Override Loki URL
-#   ALERTMANAGER_HOST  Optional — enables rule-based comparison
 
 set -euo pipefail
 
@@ -87,6 +86,12 @@ log "  App       : ${APP_HOST}"
 log "  Baseline  : ${BASELINE_DURATION}s  Anomaly: ${ANOMALY_DURATION}s  Recovery: ${RECOVERY_DURATION}s"
 log "  Log       : ${LOG_FILE}"
 
+# Ensure incidents.json is valid JSON before load_generator appends to it.
+INCIDENTS_FILE="$ML_DIR/data_ingest/incidents.json"
+if [[ ! -s "$INCIDENTS_FILE" ]]; then
+    echo "[]" > "$INCIDENTS_FILE"
+fi
+
 # ── Step 1: Baseline load ─────────────────────────────────────────────────────
 log "--- [1] Baseline load (${BASELINE_DURATION}s normal) ---"
 "$PYTHON" "$APP_DIR/load_generator.py" \
@@ -118,8 +123,12 @@ log "--- [3] Recovery load (${RECOVERY_DURATION}s normal) ---"
 
 # ── Step 4: Collect telemetry and run anomaly detection ───────────────────────
 log "--- [4] Collecting telemetry and running detection ---"
+# Use contamination=0.15 for experiments: the anomaly window (10 min) is ~17% of
+# the total window (60 min), so the model needs a looser threshold than the
+# production default of 0.02 to reliably flag injected anomalies.
 TRAIN_END_ISO="$TRAIN_END_ISO" \
 WINDOW_HOURS="$WINDOW_HOURS" \
+CONTAMINATION="${CONTAMINATION:-0.15}" \
 TH_IP="${TH_IP:-}" \
 PROMETHEUS_HOST="${PROMETHEUS_HOST:-}" \
 LOKI_HOST="${LOKI_HOST:-}" \

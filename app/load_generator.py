@@ -100,7 +100,8 @@ def main():
             "requests": counts,
         }
         path = pathlib.Path(__file__).parent.parent / "ml" / "data_ingest" / "incidents.json"
-        existing = json.loads(path.read_text()) if path.exists() else []
+        content = path.read_text().strip() if path.exists() else ""
+        existing = json.loads(content) if content else []
         existing.append(incident)
         path.write_text(json.dumps(existing, indent=2))
         print(f"Incident recorded to {path}")
